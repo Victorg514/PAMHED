@@ -10,24 +10,36 @@ from tqdm import tqdm
 import pathlib
 import warnings
 
-from transformers import AutoTokenizer, RobertaModel, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, RobertaModel, AutoModelForSequenceClassification, AutoConfig
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.feature_selection import mutual_info_classif
-from sklearn.utils.class_weight import compute_class_weight # Needed for feature selection context
 
 warnings.filterwarnings('ignore')
 
-# --- This MUST be the same AdvancedDeltaModel class from your binary training script ---
+# --- THIS MUST BE THE STABLE, GATED MODEL CLASS from your final training script ---
 class AdvancedDeltaModel(nn.Module):
     def __init__(self, base_name="mental/mental-roberta-base", num_labels=2, num_features=50, dropout_rate=0.3):
-        super().__init__(); self.num_labels = num_labels; self.base = RobertaModel.from_pretrained(base_name); hidden_size = self.base.config.hidden_size; self.feature_encoder = nn.Sequential(nn.Linear(num_features, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(dropout_rate), nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(dropout_rate), nn.Linear(128, 64), nn.BatchNorm1d(64), nn.ReLU()); self.text_attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=8, dropout=dropout_rate, batch_first=True); self.fusion_gate = nn.Sequential(nn.Linear(hidden_size + 64, hidden_size + 64), nn.Sigmoid()); self.pre_classifier = nn.Linear(hidden_size + 64, hidden_size); self.classifier_dropout = nn.Dropout(dropout_rate); self.classifier = nn.Linear(hidden_size, num_labels); self.feature_importance = nn.Parameter(torch.tensor(0.5))
+        super().__init__()
+        self.num_labels = num_labels
+        self.base = RobertaModel.from_pretrained(base_name)
+        hidden_size = self.base.config.hidden_size
+        self.feature_encoder = nn.Sequential(nn.Linear(num_features, 64), nn.ReLU(), nn.Dropout(dropout_rate))
+        self.fusion_gate = nn.Sequential(nn.Linear(hidden_size + 64, 64), nn.ReLU(), nn.Linear(64, 64), nn.Sigmoid())
+        self.classifier = nn.Linear(hidden_size + 64, num_labels)
     def forward(self, input_ids=None, attention_mask=None, delta=None, labels=None):
-        outputs = self.base(input_ids=input_ids, attention_mask=attention_mask); sequence_output = outputs.last_hidden_state; attended_output, _ = self.text_attention(query=sequence_output,key=sequence_output,value=sequence_output,key_padding_mask=~attention_mask.bool() if attention_mask is not None else None); cls_token = attended_output[:, 0]; mean_pooled = attended_output.mean(dim=1); text_features = self.feature_importance * cls_token + (1 - self.feature_importance) * mean_pooled; behavioral_features = self.feature_encoder(delta.float()); combined_features = torch.cat([text_features, behavioral_features], dim=1); gate_values = self.fusion_gate(combined_features); fused_features = combined_features * gate_values; pooled_output = self.pre_classifier(fused_features); dropped_output = self.classifier_dropout(pooled_output); logits = self.classifier(dropped_output)
+        outputs = self.base(input_ids=input_ids, attention_mask=attention_mask)
+        text_features = outputs.last_hidden_state[:, 0]
+        behavioral_features_encoded = self.feature_encoder(delta.float())
+        gate_input = torch.cat([text_features, behavioral_features_encoded], dim=1)
+        gate_values = self.fusion_gate(gate_input)
+        gated_behavioral_features = behavioral_features_encoded * gate_values
+        final_combined_features = torch.cat([text_features, gated_behavioral_features], dim=1)
+        logits = self.classifier(final_combined_features)
         return {"logits": logits}
 
 
 def get_feature_list(df, n_features, binary_y):
-    """Gets the deterministic list of top N features for a binary task."""
+    # (This function remains the same)
     exclude_cols = ['tweet_id', 'user_id', 'text', 'label', 'label_name', 'split', 'created', 'binary_label']
     feature_cols = [c for c in df.columns if c not in exclude_cols and df[c].dtype in ['float64', 'int64']]
     if not feature_cols: return []
@@ -41,14 +53,14 @@ def load_all_binary(positive_class_name: str):
     """
     Main function to load/run predictions for a specific binary task.
     """
-    # --- DYNAMIC CONFIGURATION based on the task ---
-    DATA_FILE = pathlib.Path("data/deviation_advanced_final.parquet")
+    # --- UPDATED: DYNAMIC CONFIGURATION pointing to the new model directories ---
+    DATA_FILE = pathlib.Path("data/final.parquet")
     MODEL_NAME = "mental/mental-roberta-base"
-    BASELINE_DIR = f"out/baseline_binary_{positive_class_name}"
-    DELTA_DIR = f"out/delta_binary_{positive_class_name}"
+    BASELINE_DIR = f"out/baseline_binary_{positive_class_name}_manual"
+    DELTA_DIR = f"out/delta_binary_{positive_class_name}_manual"
     MAX_FEATURES_TO_SELECT = 50
 
-    # Dynamic cache paths to avoid overwriting
+    # (Dynamic cache paths are the same)
     CACHE = {
         "proba_plain": f"cache/proba_plain_binary_{positive_class_name}.npy",
         "proba_delta": f"cache/proba_delta_binary_{positive_class_name}.npy",
@@ -58,6 +70,9 @@ def load_all_binary(positive_class_name: str):
     }
     
     os.makedirs("cache", exist_ok=True)
+    
+    # Check if cached predictions exist
+    # Comment out for new dataset
     if all(os.path.exists(CACHE[f]) for f in CACHE):
         print(f"--- Loading BINARY predictions for '{positive_class_name}' from cache ---")
         return {
@@ -67,11 +82,10 @@ def load_all_binary(positive_class_name: str):
             "pred_delta":  np.load(CACHE["pred_delta"]),
             "labels":      np.load(CACHE["labels"])
         }
-
+    
     print(f"--- Running BINARY Inference for '{positive_class_name}' (Cache not found) ---")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # --- Load and Relabel Data ---
     df = pd.read_parquet(DATA_FILE)
     LABEL_MAP = {"control": 0, "depression": 1, "anxiety": 2, "bipolar": 3}
     if positive_class_name == 'mental_health':
@@ -81,7 +95,6 @@ def load_all_binary(positive_class_name: str):
         df['binary_label'] = df['label'].apply(lambda x: 1 if x == positive_label_id else 0)
 
     test_df = df[df['split'] == 'test'].reset_index(drop=True)
-    
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     
     # --- Baseline Prediction ---
@@ -103,13 +116,19 @@ def load_all_binary(positive_class_name: str):
             all_baseline_logits.append(logits.cpu().numpy())
     proba_plain = np.concatenate(all_baseline_logits)
 
-    # --- Delta Prediction ---
+    # --- Delta Prediction (with updated loading logic) ---
     print("\nEvaluating Delta Binary Model...")
-    train_df = df[df['split'] == 'train']
-    selected_features = get_feature_list(train_df, n_features=MAX_FEATURES_TO_SELECT, binary_y=train_df['binary_label'].values)
-    actual_num_features = len(selected_features)
     
-    delta_model = AdvancedDeltaModel(base_name=MODEL_NAME, num_labels=2, num_features=actual_num_features).to(device)
+    # Load the config to find out how many features the model was trained with
+    delta_config = AutoConfig.from_pretrained(DELTA_DIR)
+    num_features_trained = delta_config.custom_num_features
+    
+    # Get the exact same feature list
+    train_df = df[df['split'] == 'train']
+    selected_features = get_feature_list(train_df, n_features=num_features_trained, binary_y=train_df['binary_label'].values)
+    
+    # Instantiate the CORRECT model architecture
+    delta_model = AdvancedDeltaModel(base_name=MODEL_NAME, num_labels=2, num_features=len(selected_features)).to(device)
     delta_model.load_state_dict(torch.load(f"{DELTA_DIR}/pytorch_model.bin", map_location=device))
     delta_model.eval()
 
@@ -126,7 +145,11 @@ def load_all_binary(positive_class_name: str):
     with torch.no_grad():
         for batch in tqdm(delta_loader, desc=f"Predicting Delta ({positive_class_name})"):
             batch = {k: v.to(device) for k, v in batch.items()}
-            logits = delta_model(**batch)['logits']
+           
+            # Extract the logits tensor from the model's output dictionary
+            output_dict = delta_model(**batch)
+            logits = output_dict['logits']
+            
             all_delta_logits.append(logits.cpu().numpy())
     proba_delta = np.concatenate(all_delta_logits)
     
@@ -137,7 +160,7 @@ def load_all_binary(positive_class_name: str):
 
     print("\nCaching binary predictions for future runs...")
     np.save(CACHE["proba_plain"], proba_plain)
-    np.save(CACHE["proba_delta"], proba_delta)
+    np.save(CACHE["proba_delta"], proba_delta) 
     np.save(CACHE["labels"], labels)
     np.save(CACHE["pred_plain"], pred_plain)
     np.save(CACHE["pred_delta"], pred_delta)
@@ -152,33 +175,21 @@ def load_all_binary(positive_class_name: str):
 
 
 def main(args):
-    """When run as a script, this function produces the detailed text reports."""
-    
+    # (The main function is largely the same, just simplified the dict unpacking)
     positive_class_name = args.positive_class
-    
-    # Run predictions for the specified binary task
     d = load_all_binary(positive_class_name)
     
-    # Unpack the dictionary
-    labels = d["labels"]
-    pred_plain = d["pred_plain"]
-    pred_delta = d["pred_delta"]
+    labels, pred_plain, pred_delta = d["labels"], d["pred_plain"], d["pred_delta"]
     
-    if positive_class_name == 'mental_health':
-        positive_class_label = "mental_health"
-    else:
-        positive_class_label = positive_class_name
+    target_names = ["other", positive_class_name] if positive_class_name != 'mental_health' else ["control", "mental_health"]
     
-    target_names = ["other", positive_class_label]
-    
-    # --- Generate Reports ---
     print("\n" + "="*70)
-    print(f"--- BASELINE MODEL RESULTS ({positive_class_label.upper()} vs. OTHERS) ---")
+    print(f"--- BASELINE MODEL RESULTS ({positive_class_name.upper()} vs. OTHERS) ---")
     print("="*70)
     print(classification_report(labels, pred_plain, target_names=target_names, digits=4))
     
     print("\n" + "="*70)
-    print(f"--- PERSONALIZED (DELTA) MODEL RESULTS ({positive_class_label.upper()} vs. OTHERS) ---")
+    print(f"--- PERSONALIZED (DELTA) MODEL RESULTS ({positive_class_name.upper()} vs. OTHERS) ---")
     print("="*70)
     print(classification_report(labels, pred_delta, target_names=target_names, digits=4))
     
@@ -191,13 +202,8 @@ def main(args):
     print("\nPersonalized (Delta) Model:")
     print(pd.DataFrame(confusion_matrix(labels, pred_delta), index=target_names, columns=target_names))
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--positive_class", type=str, required=True,
-        choices=['mental_health', 'depression', 'anxiety', 'bipolar'],
-        help="The binary classification task to evaluate."
-    )
+    parser.add_argument("--positive_class", type=str, required=True, choices=['mental_health', 'depression', 'anxiety', 'bipolar'])
     args = parser.parse_args()
     main(args)
