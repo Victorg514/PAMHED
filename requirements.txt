@@ -1,0 +1,35 @@
+# -----------------------------------------------------------------
+# Core Data Science & Machine Learning Libraries
+# -----------------------------------------------------------------
+pandas         # For data manipulation and creating DataFrames
+numpy          # For numerical operations, arrays, and math functions
+scikit-learn   # For metrics (f1_score, etc.), StandardScaler, and feature selection
+nltk           # For the VADER sentiment analyzer
+
+# -----------------------------------------------------------------
+# Deep Learning Framework (PyTorch & Hugging Face Ecosystem)
+# -----------------------------------------------------------------
+torch          # The core deep learning framework
+torchvision    # Provides datasets and models for computer vision (used by BLIP)
+torchaudio     # Often bundled with PyTorch, good for compatibility
+transformers   # For AutoModel, AutoTokenizer, Roberta, Trainer, AdamW, etc.
+datasets       # For efficiently handling and tokenizing data with Hugging Face
+accelerate     # Used by the Trainer for optimizing performance on different hardware
+safetensors    # The modern, safe format for saving model weights
+
+# -----------------------------------------------------------------
+# Data Acquisition & Processing
+# -----------------------------------------------------------------
+ntscraper      # For scraping Twitter/X data via Nitter instances
+requests       # For downloading images from URLs
+Pillow         # Python Imaging Library (PIL) for opening and processing images
+pyarrow        # Required by Pandas to read and write .parquet files
+beautifulsoup4 # A dependency of ntscraper, good to have explicitly
+tqdm           # For creating progress bars in long-running scripts
+
+# -----------------------------------------------------------------
+# Visualization & Explainability (for Notebooks)
+# -----------------------------------------------------------------
+jupyter        # To run the .ipynb notebook files
+matplotlib     # For creating plots and visualizations
+shap           # For model explainability (SHAP plots)

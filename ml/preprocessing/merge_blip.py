@@ -69,20 +69,24 @@ class DataProcessor:
         print(f"Loaded captions for {len(captions_dict)} unique tweets.")
         return captions_dict
     
-    def _try_langdetect(self, text: str) -> str | None:
+    def _is_english(self, text: str) -> bool:
         """
-        Attempt to detect language with langdetect. Returns ISO-639-1 code like 'en',
-        or None if the package is missing or detection fails.
+        Robustly checks if a text is English, with a heuristic fallback.
         """
         try:
-            from langdetect import detect, DetectorFactory
-            DetectorFactory.seed = RANDOM_SEED
-            cleaned = self._clean_text(text)
-            if not cleaned or cleaned.isnumeric():
-                return None
-            return detect(cleaned)
-        except Exception:
-            return None
+            from langdetect import detect, LangDetectException
+            # Heuristic check first to avoid errors on short/weird text
+            if len(text) < 15 and not any(word in text.lower() for word in ['the', 'a', 'is', 'i']):
+                return True # Assume short/emoji-only text is fine
+            return detect(text) == 'en'
+        except (ImportError, LangDetectException):
+            # Fallback to a simpler heuristic if langdetect fails or is not installed
+            common_en_chars = "etaoinshrdlu"
+            if not text or text.isnumeric(): return True
+            alpha_chars = sum(c.isalpha() for c in text.lower())
+            if alpha_chars < 5: return True # Too short to judge reliably
+            en_char_count = sum(text.lower().count(c) for c in common_en_chars)
+            return (en_char_count / alpha_chars) > 0.45 # Check if letter frequency is English-like
 
     def _heuristic_lang(self, text: str) -> str:
         """
@@ -236,8 +240,8 @@ class DataProcessor:
         all_user_dfs = [self.process_user_timeline(group) for _, group in tqdm(df.groupby('user_id'), desc="Processing Users")]
         df_features = pd.concat(all_user_dfs, ignore_index=True)
         
-        # --- THIS IS THE DEFINITIVE FIX ---
-        # Step 4. Standardize ONLY the features that are truly "raw"
+
+        # Standardize ONLY the features that are truly "raw"
         print("\n--- Applying Global Standardization (Definitively Corrected) ---")
         
         # Z-scored and deviation-like features should NOT be re-scaled globally.

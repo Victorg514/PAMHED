@@ -30,12 +30,12 @@ ntr.Nitter._get_user = _safe_get_user
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 INSTANCE_URL       = "http://localhost:8080"
-SEARCH_TERM        = "struggling with bipolar"
+SEARCH_TERM        = "Mahomes"
 WINDOW_DAYS         = 30                 # size of each backward slice
 STOP_AT             = date(2024, 1, 1)
-SEARCH_COUNT       = 50                 # tweets pulled for the term search
-MAX_USERS_TO_SCRAPE = 50                 # e.g. 3 users.  None → all new users
-TIMELINE_DEPTH     = 10                # tweets per user timeline
+SEARCH_COUNT       = 1                 # tweets pulled for the term search
+MAX_USERS_TO_SCRAPE = 1                 # e.g. 3 users.  None → all new users
+TIMELINE_DEPTH     = 1                # tweets per user timeline
 TERM_OUT_FILE      = "data/bipolar_tweets.json"
 USER_OUT_FILE      = "data/user_timelinesB.json"
 PAUSE_BETWEEN_USERS = 2                 # seconds
