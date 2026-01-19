@@ -54,19 +54,19 @@ def load_all_binary(positive_class_name: str):
     Main function to load/run predictions for a specific binary task.
     """
     # --- UPDATED: DYNAMIC CONFIGURATION pointing to the new model directories ---
-    DATA_FILE = pathlib.Path("data/final.parquet")
+    DATA_FILE = pathlib.Path("../../data/final.parquet")
     MODEL_NAME = "mental/mental-roberta-base"
-    BASELINE_DIR = f"out/baseline_binary_{positive_class_name}_manual"
-    DELTA_DIR = f"out/delta_binary_{positive_class_name}_manual"
+    BASELINE_DIR = f"../../out/baseline_binary_{positive_class_name}_manual"
+    DELTA_DIR = f"../../out/delta_binary_{positive_class_name}_manual"
     MAX_FEATURES_TO_SELECT = 50
 
     # (Dynamic cache paths are the same)
     CACHE = {
-        "proba_plain": f"cache/proba_plain_binary_{positive_class_name}.npy",
-        "proba_delta": f"cache/proba_delta_binary_{positive_class_name}.npy",
-        "pred_plain":  f"cache/pred_plain_binary_{positive_class_name}.npy",
-        "pred_delta":  f"cache/pred_delta_binary_{positive_class_name}.npy",
-        "labels":      f"cache/labels_binary_{positive_class_name}.npy"
+        "proba_plain": f"../../cache/proba_plain_binary_{positive_class_name}.npy",
+        "proba_delta": f"../../cache/proba_delta_binary_{positive_class_name}.npy",
+        "pred_plain":  f"../../cache/pred_plain_binary_{positive_class_name}.npy",
+        "pred_delta":  f"../../cache/pred_delta_binary_{positive_class_name}.npy",
+        "labels":      f"../../cache/labels_binary_{positive_class_name}.npy"
     }
     
     os.makedirs("cache", exist_ok=True)

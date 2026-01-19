@@ -53,9 +53,9 @@ def main(args):
     print(f"\n--- Evaluating Twitter-Trained '{POSITIVE_CLASS_NAME}' Model on eRisk Reddit Data ---")
     DECISION_THRESHOLD = 0.95 
     ERISK_FILE = "data/erisk_processed_for_testing.parquet"
-    TWITTER_FILE = "data/final.parquet" # Needed for feature order
+    TWITTER_FILE = "data/final.parquet" 
     TOKENIZER_NAME = "mental/mental-roberta-base"
-    MODEL_PATH = f"out/delta_binary_{POSITIVE_CLASS_NAME}_manual"
+    MODEL_PATH = f"../out/delta_binary_{POSITIVE_CLASS_NAME}_manual"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # 1. Load Model Config
@@ -73,7 +73,20 @@ def main(args):
     selected_features = get_training_feature_list(TWITTER_FILE, num_features_trained, POSITIVE_CLASS_NAME)
     
     # 3. Load eRisk Data and Verify Columns
-    test_df = pd.read_parquet(ERISK_FILE)
+    full_df = pd.read_parquet(ERISK_FILE)
+    depressed_df = full_df[full_df['label'] == 1]
+    control_df = full_df[full_df['label'] == 0]
+    
+    print(f"Original Count -> Depressed: {len(depressed_df)}, Control: {len(control_df)}")
+    
+    # Sample controls to match the number of depressed users
+    control_df_balanced = control_df.sample(n=len(depressed_df), random_state=42)
+    
+    # Combine and shuffle
+    test_df = pd.concat([depressed_df, control_df_balanced]).sample(frac=1, random_state=42).reset_index(drop=True)
+    
+    print(f"Balanced Count -> Depressed: {len(test_df[test_df['label']==1])}, Control: {len(test_df[test_df['label']==0])}")
+    print(f"Total Test Set Size: {len(test_df)}")
     
     # Ensure all selected features exist in eRisk data (fill 0 if missing)
     for feat in selected_features:
