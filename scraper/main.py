@@ -30,7 +30,7 @@ ntr.Nitter._get_user = _safe_get_user
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 INSTANCE_URL       = "http://localhost:8080"
-SEARCH_TERM        = "Mahomes"
+SEARCH_TERM        = "I diagnosed bipolar"
 WINDOW_DAYS         = 30                 # size of each backward slice
 STOP_AT             = date(2024, 1, 1)
 SEARCH_COUNT       = 1                 # tweets pulled for the term search

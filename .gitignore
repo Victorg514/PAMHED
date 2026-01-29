@@ -65,5 +65,4 @@ Thumbs.db
 
 # Project specific
 sessions.jsonl
-nitter.conf
-!nitter/nitter.example.conf
+
