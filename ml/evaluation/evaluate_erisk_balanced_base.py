@@ -17,9 +17,10 @@ def main(args):
     print(f"\n--- Evaluating Twitter-Trained BASELINE '{POSITIVE_CLASS_NAME}' Model on eRisk Reddit Data ---")
     
     # --- Configuration ---
-    DECISION_THRESHOLD = 0.95 
-    ERISK_FILE = "../../data/erisk_processed_for_testing.parquet"
-    MODEL_PATH = os.path.abspath(f"../../out/baseline_binary_{POSITIVE_CLASS_NAME}_manual")
+    DECISION_THRESHOLD = 0.95
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    ERISK_FILE = os.path.join(PROJECT_ROOT, "data", "erisk_processed_for_testing.parquet")
+    MODEL_PATH = os.path.join(PROJECT_ROOT, "out", f"baseline_binary_{POSITIVE_CLASS_NAME}_manual")
     
     print(f"Loading baseline model from LOCAL path: {MODEL_PATH}")
 

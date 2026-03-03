@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from datasets import Dataset
 from tqdm import tqdm
-import pathlib
 import warnings
 
 from transformers import (
@@ -20,20 +19,22 @@ from sklearn.feature_selection import mutual_info_classif
 warnings.filterwarnings('ignore')
 
 # --- CONFIGURATION ---
-DATA_FILE    = "data/final.parquet" 
-BASELINE_DIR = "out/baseline_final2"
-DELTA_DIR    = "out/delta_final2" 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+DATA_FILE    = os.path.join(PROJECT_ROOT, "data", "final.parquet")
+BASELINE_DIR = os.path.join(PROJECT_ROOT, "out", "baseline_final2")
+DELTA_DIR    = os.path.join(PROJECT_ROOT, "out", "delta_final2")
 MODEL_NAME   = "mental/mental-roberta-base"
 NUM_LABELS   = 4
 MAX_FEATURES_TO_SELECT = 50
 
 # Restored Caching System
 CACHE = {
-    "proba_plain": "cache/proba_plain_4class.npy",
-    "proba_delta": "cache/proba_delta_4class.npy",
-    "pred_plain":  "cache/pred_plain_4class.npy",
-    "pred_delta":  "cache/pred_delta_4class.npy",
-    "labels":      "cache/labels_4class.npy"
+    "proba_plain": os.path.join(PROJECT_ROOT, "cache", "proba_plain_4class.npy"),
+    "proba_delta": os.path.join(PROJECT_ROOT, "cache", "proba_delta_4class.npy"),
+    "pred_plain":  os.path.join(PROJECT_ROOT, "cache", "pred_plain_4class.npy"),
+    "pred_delta":  os.path.join(PROJECT_ROOT, "cache", "pred_delta_4class.npy"),
+    "labels":      os.path.join(PROJECT_ROOT, "cache", "labels_4class.npy")
 }
 
 # --- THE CORRECT DELTA MODEL CLASS ---
@@ -66,7 +67,7 @@ def load_all():
     It runs inference or loads from cache, then returns a dictionary
     with probabilities, predictions, and labels.
     """
-    os.makedirs("cache", exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, "cache"), exist_ok=True)
     
     # Check if cached predictions exist
     # Comment out for new dataset

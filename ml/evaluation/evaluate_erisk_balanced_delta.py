@@ -51,11 +51,12 @@ def get_training_feature_list(training_data_path, n_features, positive_class):
 def main(args):
     POSITIVE_CLASS_NAME = args.positive_class
     print(f"\n--- Evaluating Twitter-Trained '{POSITIVE_CLASS_NAME}' Model on eRisk Reddit Data ---")
-    DECISION_THRESHOLD = 0.95 
-    ERISK_FILE = "data/erisk_processed_for_testing.parquet"
-    TWITTER_FILE = "data/final.parquet" 
+    DECISION_THRESHOLD = 0.95
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    ERISK_FILE = os.path.join(PROJECT_ROOT, "data", "erisk_processed_for_testing.parquet")
+    TWITTER_FILE = os.path.join(PROJECT_ROOT, "data", "final.parquet")
     TOKENIZER_NAME = "mental/mental-roberta-base"
-    MODEL_PATH = f"../out/delta_binary_{POSITIVE_CLASS_NAME}_manual"
+    MODEL_PATH = os.path.join(PROJECT_ROOT, "out", f"delta_binary_{POSITIVE_CLASS_NAME}_manual")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # 1. Load Model Config

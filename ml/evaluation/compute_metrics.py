@@ -1,8 +1,10 @@
 # compute_metrics.py
 import json, csv, datetime as dt, os, statistics
 
-IN_JSON  = "user_timelinesA.json"
-OUT_CSV  = "condition_metrics.csv"
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+IN_JSON  = os.path.join(PROJECT_ROOT, "data", "user_timelinesA.json")
+OUT_CSV  = os.path.join(PROJECT_ROOT, "data", "condition_metrics.csv")
 
 def parse_date(raw: str) -> dt.datetime:
     cleaned = raw.replace("·", "").replace("UTC", "").strip()

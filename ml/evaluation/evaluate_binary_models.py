@@ -1,4 +1,3 @@
-
 import argparse
 import os
 import numpy as np
@@ -7,8 +6,8 @@ import torch
 import torch.nn as nn
 from datasets import Dataset
 from tqdm import tqdm
-import pathlib
 import warnings
+import json
 
 from transformers import AutoTokenizer, RobertaModel, AutoModelForSequenceClassification, AutoConfig
 from sklearn.metrics import classification_report, confusion_matrix
@@ -16,7 +15,8 @@ from sklearn.feature_selection import mutual_info_classif
 
 warnings.filterwarnings('ignore')
 
-# --- THIS MUST BE THE STABLE, GATED MODEL CLASS from your final training script ---
+# --- MODEL DEFINITION ---
+# This MUST be identical to the class used in train_binary_delta_manual_final.py
 class AdvancedDeltaModel(nn.Module):
     def __init__(self, base_name="mental/mental-roberta-base", num_labels=2, num_features=50, dropout_rate=0.3):
         super().__init__()
@@ -26,7 +26,7 @@ class AdvancedDeltaModel(nn.Module):
         self.feature_encoder = nn.Sequential(nn.Linear(num_features, 64), nn.ReLU(), nn.Dropout(dropout_rate))
         self.fusion_gate = nn.Sequential(nn.Linear(hidden_size + 64, 64), nn.ReLU(), nn.Linear(64, 64), nn.Sigmoid())
         self.classifier = nn.Linear(hidden_size + 64, num_labels)
-    def forward(self, input_ids=None, attention_mask=None, delta=None, labels=None):
+    def forward(self, input_ids=None, attention_mask=None, delta=None):
         outputs = self.base(input_ids=input_ids, attention_mask=attention_mask)
         text_features = outputs.last_hidden_state[:, 0]
         behavioral_features_encoded = self.feature_encoder(delta.float())
@@ -35,8 +35,8 @@ class AdvancedDeltaModel(nn.Module):
         gated_behavioral_features = behavioral_features_encoded * gate_values
         final_combined_features = torch.cat([text_features, gated_behavioral_features], dim=1)
         logits = self.classifier(final_combined_features)
-        return {"logits": logits}
-
+        # Note: The manual training script returns raw logits tensor, not a dict
+        return logits
 
 def get_feature_list(df, n_features, binary_y):
     # (This function remains the same)
@@ -53,26 +53,22 @@ def load_all_binary(positive_class_name: str):
     """
     Main function to load/run predictions for a specific binary task.
     """
-    # --- UPDATED: DYNAMIC CONFIGURATION pointing to the new model directories ---
-    DATA_FILE = pathlib.Path("../../data/final.parquet")
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    DATA_FILE = os.path.join(PROJECT_ROOT, "data", "final.parquet")
     MODEL_NAME = "mental/mental-roberta-base"
-    BASELINE_DIR = f"../../out/baseline_binary_{positive_class_name}_manual"
-    DELTA_DIR = f"../../out/delta_binary_{positive_class_name}_manual"
+    BASELINE_DIR = os.path.join(PROJECT_ROOT, "out", f"baseline_binary_{positive_class_name}_manual")
+    DELTA_DIR = os.path.join(PROJECT_ROOT, "out", f"delta_binary_{positive_class_name}_manual")
     MAX_FEATURES_TO_SELECT = 50
 
-    # (Dynamic cache paths are the same)
     CACHE = {
-        "proba_plain": f"../../cache/proba_plain_binary_{positive_class_name}.npy",
-        "proba_delta": f"../../cache/proba_delta_binary_{positive_class_name}.npy",
-        "pred_plain":  f"../../cache/pred_plain_binary_{positive_class_name}.npy",
-        "pred_delta":  f"../../cache/pred_delta_binary_{positive_class_name}.npy",
-        "labels":      f"../../cache/labels_binary_{positive_class_name}.npy"
+        "proba_plain": os.path.join(PROJECT_ROOT, "cache", f"proba_plain_binary_{positive_class_name}.npy"),
+        "proba_delta": os.path.join(PROJECT_ROOT, "cache", f"proba_delta_binary_{positive_class_name}.npy"),
+        "pred_plain":  os.path.join(PROJECT_ROOT, "cache", f"pred_plain_binary_{positive_class_name}.npy"),
+        "pred_delta":  os.path.join(PROJECT_ROOT, "cache", f"pred_delta_binary_{positive_class_name}.npy"),
+        "labels":      os.path.join(PROJECT_ROOT, "cache", f"labels_binary_{positive_class_name}.npy")
     }
-    
-    os.makedirs("cache", exist_ok=True)
-    
-    # Check if cached predictions exist
-    # Comment out for new dataset
+
+    os.makedirs(os.path.join(PROJECT_ROOT, "cache"), exist_ok=True)
     if all(os.path.exists(CACHE[f]) for f in CACHE):
         print(f"--- Loading BINARY predictions for '{positive_class_name}' from cache ---")
         return {
@@ -116,20 +112,29 @@ def load_all_binary(positive_class_name: str):
             all_baseline_logits.append(logits.cpu().numpy())
     proba_plain = np.concatenate(all_baseline_logits)
 
-    # --- Delta Prediction (with updated loading logic) ---
+    # --- Delta Prediction ---
     print("\nEvaluating Delta Binary Model...")
     
-    # Load the config to find out how many features the model was trained with
-    delta_config = AutoConfig.from_pretrained(DELTA_DIR)
-    num_features_trained = delta_config.custom_num_features
-    
-    # Get the exact same feature list
+    # 1. Load config to get num_features
+    try:
+        with open(os.path.join(DELTA_DIR, 'config.json'), 'r') as f:
+            delta_config = json.load(f)
+            num_features_trained = delta_config.get('custom_num_features', 50)
+            print(f"Model trained with {num_features_trained} features.")
+    except FileNotFoundError:
+        print("Warning: config.json not found, using default 50 features.")
+        num_features_trained = 50
+
+    # 2. Get feature list
     train_df = df[df['split'] == 'train']
     selected_features = get_feature_list(train_df, n_features=num_features_trained, binary_y=train_df['binary_label'].values)
     
-    # Instantiate the CORRECT model architecture
+    # 3. Instantiate Model
     delta_model = AdvancedDeltaModel(base_name=MODEL_NAME, num_labels=2, num_features=len(selected_features)).to(device)
-    delta_model.load_state_dict(torch.load(f"{DELTA_DIR}/pytorch_model.bin", map_location=device))
+    
+    # 4. Load Weights
+    weights_path = os.path.join(DELTA_DIR, "pytorch_model.bin")
+    delta_model.load_state_dict(torch.load(weights_path, map_location=device))
     delta_model.eval()
 
     def tok_plus(batch):
@@ -145,15 +150,12 @@ def load_all_binary(positive_class_name: str):
     with torch.no_grad():
         for batch in tqdm(delta_loader, desc=f"Predicting Delta ({positive_class_name})"):
             batch = {k: v.to(device) for k, v in batch.items()}
-           
-            # Extract the logits tensor from the model's output dictionary
-            output_dict = delta_model(**batch)
-            logits = output_dict['logits']
-            
+            # Note: The manual model returns logits TENSOR directly
+            logits = delta_model(**batch) 
             all_delta_logits.append(logits.cpu().numpy())
     proba_delta = np.concatenate(all_delta_logits)
     
-    # --- Process and Cache All Results ---
+    # --- Process and Cache ---
     labels = test_df['binary_label'].values
     pred_plain = proba_plain.argmax(axis=1)
     pred_delta = proba_delta.argmax(axis=1)
@@ -165,17 +167,10 @@ def load_all_binary(positive_class_name: str):
     np.save(CACHE["pred_plain"], pred_plain)
     np.save(CACHE["pred_delta"], pred_delta)
 
-    return {
-        "proba_plain": proba_plain,
-        "proba_delta": proba_delta,
-        "pred_plain":  pred_plain,
-        "pred_delta":  pred_delta,
-        "labels":      labels
-    }
+    return { "pred_plain": pred_plain, "pred_delta": pred_delta, "labels": labels, "proba_plain": proba_plain, "proba_delta": proba_delta }
 
 
 def main(args):
-    # (The main function is largely the same, just simplified the dict unpacking)
     positive_class_name = args.positive_class
     d = load_all_binary(positive_class_name)
     
