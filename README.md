@@ -1,6 +1,6 @@
 # Personalized Mental Health Detection from Social Media Behavior
 
-Detects depression, anxiety, and bipolar disorder from Twitter/X timelines. The hypothesis is that deviation from a user's own behavioral baseline is a stronger signal than post content alone. The repo includes a 4-class model and a One-vs-Rest ensemble of binary classifiers, both built on MentalRoBERTa. See [396 Progress report 3 (2).pdf](<396 Progress report 3 (2).pdf>) for details (paper in progress).
+Detects depression, anxiety, and bipolar disorder from Twitter/X timelines. The hypothesis is that deviation from a user's own behavioral baseline is a stronger signal than post content alone. The repo includes a 4-class model and a One-vs-Rest ensemble of binary classifiers, both built on MentalRoBERTa. Refer to the last progress report and final paper for details: [396 Progress report 3 (2).pdf](<396 Progress report 3 (2).pdf>) , [PAMHeD.pdf](<PAMHeD.pdf>) .
 
 ## Structure
 
