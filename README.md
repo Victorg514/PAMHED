@@ -39,7 +39,7 @@ mkdir data
 
 ### Option A: Use the collected dataset
 
-Download **[link to dataset]** into `data/`. If it includes `final.parquet`, skip to step 3. Otherwise run step 2.
+Download **[link to dataset (On the way)]** into `data/`. If it includes `final.parquet`, skip to step 3. Otherwise run step 2.
 
 ### Option B: Scrape a new dataset with Nitter
 
