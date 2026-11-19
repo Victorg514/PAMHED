@@ -2,8 +2,8 @@
 
 Detects depression, anxiety and bipolar disorder from Twitter/X timelines. The hypothesis is that deviation from a user's own behavioral baseline adds signal to the post text. Each task is a binary classifier built on MentalRoBERTa, trained with and without 10 behavioral deviation features (a text-only baseline and a "delta" model with the same architecture), plus a 4-class model for comparison.
 
-- Paper: ([PAMHeD.pdf](<PAMHeD.pdf>), [last progress report](<396 Progress report 3 (2).pdf>))
-
+- Paper: [PAMHeD.pdf](<PAMHeD.pdf>)
+  
 ## Structure
 
 ```
