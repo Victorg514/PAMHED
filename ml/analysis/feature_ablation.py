@@ -1,6 +1,6 @@
 """
 CPU feature-group ablation on the behavioural features alone (no text), to decide which groups are
-worth the GPU time (FEATURE_FIXES.md, fix 9).
+worth the GPU time.
 
   python ml/analysis/feature_ablation.py --task mental_health
 

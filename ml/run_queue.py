@@ -1,11 +1,11 @@
 """
 Runs all v2 training jobs one after another (e.g. overnight), then writes the summary table.
 
-  python ml/run_queue.py --phases 1 5 4 3   # the full plan (see results/RESULTS_NOTES.md), ~24 h
+  python ml/run_queue.py --phases 1 5 4 3   # the full plan used in the paper, ~24 h
   python ml/run_queue.py                     # phase 1 only: mental health + depression, text only vs features
   python ml/run_queue.py --dry_run           # show what would run
 
-Phases: 1 = mental health + depression, 5 = anxiety + bipolar, 4 = 4-class (paper Table 2),
+Phases: 1 = mental health + depression, 5 = anxiety + bipolar, 4 = 4-class,
 3 = anxiety seeds 43 and 44, 2 = all 20 features (optional).
 
 Finished runs (metrics.json present) are skipped, so the queue can be stopped and restarted.
@@ -21,7 +21,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 RUNS_DIR = ROOT / "out" / "v2"
 
 # Feature set for the "with features" model, chosen by the CPU ablation on the validation split
-# (results/feature_ablation_*.md): at the user level it matches or beats all 20 features on every task
+# (ml/analysis/feature_ablation.py): at the user level it beats all 20 features on three of four tasks
+# and is within 0.005 on anxiety
 FEATURES = "length,sentiment,language"
 TASKS = ("mental_health", "depression")
 # Only these keep model.pt (~500 MB each): needed later for the eRisk test and SHAP. Every run keeps its predictions.

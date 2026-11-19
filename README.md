@@ -18,7 +18,7 @@ ml/utils/           image download, BLIP captioning, filtering helpers
 ml/testing/         live single-user prediction pipeline, sanity checks (v1)
 ml/legacy/          v1 training and evaluation scripts (kept for reference, not used)
 notebooks/          SHAP_v2.ipynb (interactive explainability); legacy/ holds the v1 notebooks
-results/            tables (.md), figures/, and the notes above
+results/            tables behind the paper's numbers (.md/.csv/.json) and figures/
 nitter/, tools/     Nitter source/config and session generators
 ```
 

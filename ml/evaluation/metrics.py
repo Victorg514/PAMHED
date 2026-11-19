@@ -2,7 +2,7 @@
 Metrics shared by the training script and the summary script.
 
 - Positive-class F1 is reported but never used to choose anything: always predicting the positive
-  class scores well on it (see FEATURE_FIXES.md). Model selection uses ROC-AUC; thresholds are tuned
+  class scores well on it. Model selection uses ROC-AUC; thresholds are tuned
   for macro F1 on the validation split and then applied unchanged to test.
 - User-level scores average each user's tweet probabilities, as in eRisk-style evaluation.
 - Confidence intervals resample USERS (not tweets), because tweets from one user are not independent.

@@ -6,8 +6,6 @@
 • Creates a clean, training-ready Parquet file where EACH ROW IS ONE TWEET.
 • Incorporates: temporal rhythms, emotional dynamics, linguistic complexity, etc.
 • Features are saved UNSCALED: scaling is fit on the train split at training time (ml/features.py).
-
-See FEATURE_FIXES.md for why the feature code changed (v2).
 """
 import json
 import pathlib

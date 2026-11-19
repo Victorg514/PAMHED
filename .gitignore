@@ -72,3 +72,13 @@ sessions.jsonl
 
 # keep the small result files
 !/results/*.json
+
+# notes and analysis 
+PAMHeD_context.md
+v2_FIXES.md
+/results/*.md
+
+!/results/summary.md
+!/results/paired_bootstrap_s*.md
+!/results/erisk_cross_platform.md
+!/results/feature_ablation_*.md

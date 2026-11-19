@@ -2,7 +2,7 @@
 Shared feature definitions and data loading for training, evaluation, ablation and SHAP.
 
 Everything that turns data/final.parquet into model inputs lives here, so the training script,
-the evaluation scripts and the SHAP notebook cannot drift apart (see FEATURE_FIXES.md).
+the evaluation scripts and the SHAP notebook cannot drift apart.
 """
 import pathlib
 import numpy as np
@@ -17,7 +17,7 @@ TASKS = ["mental_health", "depression", "anxiety", "bipolar", "4class"]
 CLIP = 5.0         # standardized features are clipped to [-CLIP, CLIP]
 WINSOR = (0.5, 99.5)  # raw features are first clipped to these train percentiles (heavy tails)
 
-# One representative per feature family: no shifted/rescaled copies of the same signal (fix 3)
+# One representative per feature family: no shifted/rescaled copies of the same signal
 FEATURE_GROUPS = {
     "length":     ["len_z"],
     "sentiment":  ["sent_compound_z", "neg", "pos", "emotion_volatility_10tw", "polarity_shift"],
@@ -88,7 +88,7 @@ def load_split(split: str, features: list, with_text: bool = True, data_file=DAT
 
 def fit_scaler(train_df: pd.DataFrame, features: list) -> dict:
     """
-    Statistics from the TRAIN split only (fix 6). Raw values are clipped to the train percentiles in
+    Statistics from the TRAIN split only, so nothing from val/test leaks into the scaling. Raw values are clipped to the train percentiles in
     WINSOR before mean/std are computed, so a few extreme rows cannot squash a whole feature.
     """
     x = train_df[features].to_numpy(dtype=np.float64)
